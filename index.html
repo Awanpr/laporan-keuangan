@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Laporan Keuangan</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        padding: 20px;
+        background: #f4f4f4;
+      }
+      .container {
+        max-width: 800px;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px gray;
+      }
+      h2 {
+        text-align: center;
+      }
+      label {
+        font-weight: bold;
+        display: block;
+        margin-top: 10px;
+      }
+      input,
+      select,
+      button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 5px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+      }
+      button {
+        background: green;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: darkgreen;
+      }
+      .table-container {
+        overflow-x: auto;
+        margin-top: 20px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 600px;
+      }
+      th,
+      td {
+        padding: 10px;
+        border: 1px solid black;
+        text-align: center;
+      }
+      th {
+        background: #333;
+        color: white;
+      }
+      .lunas {
+        background: #c8e6c9;
+      } /* Hijau */
+      .belum-lunas {
+        background: #ffcdd2;
+      } /* Merah */
+      .piutang {
+        background: #fff176;
+      } /* Kuning */
+      @media (max-width: 600px) {
+        body {
+          padding: 10px;
+        }
+        .container {
+          padding: 15px;
+        }
+        input,
+        select,
+        button {
+          padding: 8px;
+          font-size: 14px;
+        }
+        th,
+        td {
+          padding: 8px;
+          font-size: 14px;
+        }
+        button {
+          font-size: 14px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Laporan Keuangan</h2>
+      <label>Tanggal:</label>
+      <input type="date" id="tanggal" />
+
+      <label>Nama</label>
+      <input type="text" id="nama" placeholder="Masukkan nama" />
+
+      <label>Jumlah Utang</label>
+      <input type="number" id="utang" placeholder="Masukkan jumlah utang" />
+
+      <label>Jumlah Bayar</label>
+      <input
+        type="number"
+        id="bayar"
+        placeholder="Masukkan jumlah pembayaran"
+      />
+
+      <button onclick="simpanData()">Simpan</button>
+
+      <h3>Filter Data</h3>
+      <label>Pilih Bulan:</label>
+      <select id="filterBulan" onchange="tampilkanData()"></select>
+
+      <label>Pilih Tahun:</label>
+      <select id="filterTahun" onchange="tampilkanData()"></select>
+
+      <h3>Data Keuangan</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Tanggal</th>
+              <th>Nama</th>
+              <th>Utang</th>
+              <th>Bayar</th>
+              <th>Sisa</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="dataTabel"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      document.getElementById("tanggal").value = new Date()
+        .toISOString()
+        .split("T")[0];
+
+      function simpanData() {
+        let tanggal = document.getElementById("tanggal").value;
+        let nama = document.getElementById("nama").value;
+        let utang = parseFloat(document.getElementById("utang").value);
+        let bayar = parseFloat(document.getElementById("bayar").value);
+        let sisa = bayar - utang;
+        let status = sisa > 0 ? "Piutang" : sisa < 0 ? "Belum Lunas" : "Lunas";
+
+        if (!nama || isNaN(utang) || isNaN(bayar)) {
+          alert("Mohon isi semua data!");
+          return;
+        }
+
+        let dataKeuangan = JSON.parse(localStorage.getItem("keuangan")) || [];
+        dataKeuangan.push({ tanggal, nama, utang, bayar, sisa, status });
+        localStorage.setItem("keuangan", JSON.stringify(dataKeuangan));
+
+        tampilkanData();
+        document.getElementById("nama").value = "";
+        document.getElementById("utang").value = "";
+        document.getElementById("bayar").value = "";
+      }
+
+      function tampilkanData() {
+        let dataTabel = document.getElementById("dataTabel");
+        dataTabel.innerHTML = "";
+        let dataKeuangan = JSON.parse(localStorage.getItem("keuangan")) || [];
+
+        let bulanFilter = document.getElementById("filterBulan").value;
+        let tahunFilter = document.getElementById("filterTahun").value;
+
+        dataKeuangan.forEach((data, index) => {
+          let tanggal = new Date(data.tanggal);
+          let bulan = (tanggal.getMonth() + 1).toString().padStart(2, "0");
+          let tahun = tanggal.getFullYear().toString();
+
+          if (bulan === bulanFilter && tahun === tahunFilter) {
+            let rowClass =
+              data.status === "Lunas"
+                ? "lunas"
+                : data.status === "Piutang"
+                ? "piutang"
+                : "belum-lunas";
+            let row = `<tr class="${rowClass}">
+                        <td>${data.tanggal}</td>
+                        <td>${data.nama}</td>
+                        <td>Rp ${data.utang}</td>
+                        <td>Rp ${data.bayar}</td>
+                        <td>Rp ${data.sisa}</td>
+                        <td>${data.status}</td>
+                        <td>
+                            <button onclick="editBayar(${index})">Edit</button>
+                            <button onclick="hapusData(${index})" style="background:red;">Hapus</button>
+                        </td>
+                    </tr>`;
+            dataTabel.innerHTML += row;
+          }
+        });
+      }
+
+      function editBayar(index) {
+        let dataKeuangan = JSON.parse(localStorage.getItem("keuangan"));
+        let bayarBaru = prompt("Masukkan jumlah pembayaran tambahan:", 0);
+
+        if (bayarBaru !== null) {
+          bayarBaru = parseFloat(bayarBaru);
+          if (isNaN(bayarBaru) || bayarBaru < 0) {
+            alert("Jumlah bayar tidak valid!");
+            return;
+          }
+
+          dataKeuangan[index].bayar += bayarBaru;
+          dataKeuangan[index].sisa =
+            dataKeuangan[index].bayar - dataKeuangan[index].utang;
+          dataKeuangan[index].status =
+            dataKeuangan[index].sisa > 0
+              ? "Piutang"
+              : dataKeuangan[index].sisa < 0
+              ? "Belum Lunas"
+              : "Lunas";
+
+          localStorage.setItem("keuangan", JSON.stringify(dataKeuangan));
+          tampilkanData();
+        }
+      }
+
+      function hapusData(index) {
+        let dataKeuangan = JSON.parse(localStorage.getItem("keuangan"));
+        dataKeuangan.splice(index, 1);
+        localStorage.setItem("keuangan", JSON.stringify(dataKeuangan));
+        tampilkanData();
+      }
+
+      function isiFilter() {
+        let bulanSelect = document.getElementById("filterBulan");
+        let tahunSelect = document.getElementById("filterTahun");
+
+        for (let i = 1; i <= 12; i++) {
+          let bulan = i.toString().padStart(2, "0");
+          bulanSelect.innerHTML += `<option value="${bulan}">${bulan}</option>`;
+        }
+
+        let tahunSekarang = new Date().getFullYear();
+        for (let i = tahunSekarang - 5; i <= tahunSekarang + 5; i++) {
+          tahunSelect.innerHTML += `<option value="${i}">${i}</option>`;
+        }
+      }
+
+      isiFilter();
+      window.onload = tampilkanData;
+    </script>
+  </body>
+</html>
